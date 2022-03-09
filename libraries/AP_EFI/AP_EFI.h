@@ -74,6 +74,7 @@ public:
         NONE       = 0,
         MegaSquirt = 1,
         NWPMU     = 2,
+        CurrawongECU = 5,
     };
 
     static AP_EFI *get_singleton(void) {
