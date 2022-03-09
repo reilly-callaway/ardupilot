@@ -33,7 +33,7 @@ const AP_Param::GroupInfo AP_EFI::var_info[] = {
     // @Param: _TYPE
     // @DisplayName: EFI communication type
     // @Description: What method of communication is used for EFI #1
-    // @Values: 0:None,1:Serial-MS,2:NWPMU,3:Serial-Lutan
+    // @Values: 0:None,1:Serial-MS,2:NWPMU,3:Serial-Lutan,5:Currawong-ECU
     // @User: Advanced
     // @RebootRequired: True
     AP_GROUPINFO_FLAGS("_TYPE", 1, AP_EFI, type, 0, AP_PARAM_FLAG_ENABLE),
@@ -83,6 +83,11 @@ void AP_EFI::init(void)
     case Type::NWPMU:
 #if HAL_EFI_NWPWU_ENABLED
         backend = new AP_EFI_NWPMU(*this);
+#endif
+        break;
+    case Type::CurrawongECU:
+#if HAL_EFI_CURRAWONG_ECU_ENABLED
+        backend = new AP_EFI_Currawong_ECU(*this);
 #endif
         break;
     default:
