@@ -30,14 +30,23 @@
 
 #if HAL_EFI_CURRAWONG_ECU_ENABLED
 
+
+
 class AP_EFI_Currawong_ECU : public AP_EFI_Backend {
 public:
     AP_EFI_Currawong_ECU(AP_EFI &_frontend);
     
     void update() override;
 
+    static AP_EFI_Currawong_ECU* get_instance(void)
+    {
+        return singleton;
+    }
+
 private:
-    bool handle_ecu_message(AP_HAL::CANFrame &frame);
+    bool handle_message(AP_HAL::CANFrame &frame);
+
+    static AP_EFI_Currawong_ECU *singleton;
 
 };
 

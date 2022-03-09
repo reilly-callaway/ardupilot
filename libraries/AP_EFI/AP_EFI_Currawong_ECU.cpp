@@ -24,16 +24,18 @@
 
 #if HAL_EFI_CURRAWONG_ECU_ENABLED
 
+extern const AP_HAL::HAL& hal;
+
+AP_EFI_Currawong_ECU* AP_EFI_Currawong_ECU::singleton;
 
 AP_EFI_Currawong_ECU::AP_EFI_Currawong_ECU(AP_EFI &_frontend) :
     AP_EFI_Backend(_frontend)
 {
-    register_driver(AP_CANManager::Driver_Type_EFI_Currawong_ECU);
+    singleton = this;
 
     internal_state.oil_pressure_status = Oil_Pressure_Status::OIL_PRESSURE_STATUS_NOT_SUPPORTED;
     internal_state.debris_status = Debris_Status::NOT_SUPPORTED;
     internal_state.misfire_status = Misfire_Status::NOT_SUPPORTED;
-
 }
 
 void AP_EFI_Currawong_ECU::update()
@@ -42,7 +44,7 @@ void AP_EFI_Currawong_ECU::update()
     copy_to_frontend();
 }
 
-bool AP_EFI_Currawong_ECU::handle_ecu_message(AP_HAL::CANFrame &frame)
+bool AP_EFI_Currawong_ECU::handle_message(AP_HAL::CANFrame &frame)
 {
     bool valid  = true;
 
