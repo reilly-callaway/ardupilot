@@ -48,6 +48,7 @@ private:
 
     static AP_EFI_Currawong_ECU *singleton;
 
+    friend class AP_PiccoloCAN;
 };
 
 #endif // HAL_EFI_NWPWU_ENABLED

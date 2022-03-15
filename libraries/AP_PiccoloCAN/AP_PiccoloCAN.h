@@ -133,7 +133,7 @@ private:
     
 #if HAL_EFI_CURRAWONG_ECU_ENABLED
     // interpret an ECU message received over CAN
-    bool handle_ecu_message(AP_HAL::CANFrame &frame)
+    bool handle_ecu_message(AP_HAL::CANFrame &frame);
 #endif
 
     bool _initialized;
