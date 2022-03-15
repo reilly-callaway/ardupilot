@@ -17,7 +17,6 @@
 
 #if HAL_EFI_ENABLED
 
-#define HAL_EFI_CURRAWONG_ECU_ENABLED 1
 #include "AP_EFI_Serial_MS.h"
 #include "AP_EFI_Serial_Lutan.h"
 #include "AP_EFI_NWPMU.h"

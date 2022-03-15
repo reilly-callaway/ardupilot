@@ -18,13 +18,15 @@
  *
  *      Author: Reilly Callaway
  */
-
-#include <AP_PiccoloCAN/piccolo_protocol/ECUPackets.h>
-#include <AP_Math/definitions.h>
+#include "AP_EFI_Currawong_ECU.h"
 
 #if HAL_EFI_CURRAWONG_ECU_ENABLED
 
-extern const AP_HAL::HAL& hal;
+#include <AP_Param/AP_Param.h>
+#include <AP_PiccoloCAN/piccolo_protocol/ECUPackets.h>
+#include <AP_Math/definitions.h>
+
+#define KGPM3_TO_GPCM3(x) (0.001f * x)
 
 AP_EFI_Currawong_ECU* AP_EFI_Currawong_ECU::singleton;
 
@@ -32,10 +34,6 @@ AP_EFI_Currawong_ECU::AP_EFI_Currawong_ECU(AP_EFI &_frontend) :
     AP_EFI_Backend(_frontend)
 {
     singleton = this;
-
-    internal_state.oil_pressure_status = Oil_Pressure_Status::OIL_PRESSURE_STATUS_NOT_SUPPORTED;
-    internal_state.debris_status = Debris_Status::NOT_SUPPORTED;
-    internal_state.misfire_status = Misfire_Status::NOT_SUPPORTED;
 }
 
 void AP_EFI_Currawong_ECU::update()
@@ -59,7 +57,80 @@ bool AP_EFI_Currawong_ECU::handle_message(AP_HAL::CANFrame &frame)
     ECU_Errors_t errors;
 
     // Throw the message at the decoding functions
+    if (decodeECU_TelemetryFastPacketStructure(&frame, &telemetryFast))
+    {
+        internal_state.throttle_position_percent = static_cast<uint8_t>(telemetryFast.throttle);
+        // TODO: Do we have a better metric for engine load than just throttle?
+        internal_state.engine_load_percent = static_cast<uint8_t>(telemetryFast.throttle);
+        internal_state.engine_speed_rpm = static_cast<uint32_t>(telemetryFast.rpm);
 
+        // TODO: Is this appropriate derivation of engine state?
+        // Does the ECU provide a starting or fault state?
+        if (internal_state.engine_speed_rpm > 0)
+        {
+            internal_state.engine_state = Engine_State::RUNNING;
+        }
+        else
+        {
+            internal_state.engine_state = Engine_State::STOPPED;
+        }
+
+        internal_state.estimated_consumed_fuel_volume_cm3 = static_cast<float>(telemetryFast.fuelUsed) / KGPM3_TO_GPCM3(get_ecu_dn());
+
+        internal_state.general_error = telemetryFast.ecuStatusBits.errorIndicator;
+        // TODO: Is this needed? Or should we derive engine_state otherwise?
+        if (!telemetryFast.ecuStatusBits.enabled)
+        {
+            internal_state.engine_state = Engine_State::STOPPED;
+        }
+        
+        // Remaining data in packet:
+        // ECU_ecuStatusBits_t ecuStatusBits;
+    }
+    else if (decodeECU_TelemetrySlow0PacketStructure(&frame, &telemetrySlow0))
+    {
+        internal_state.intake_manifold_pressure_kpa = telemetrySlow0.map;
+        internal_state.atmospheric_pressure_kpa = telemetrySlow0.baro;
+        internal_state.cylinder_status[0].cylinder_head_temperature = C_TO_KELVIN(telemetrySlow0.cht);
+
+        // Remaining data in packet:
+        // uint16_t          rpmCmd;        //!< The reconstructed RPM command
+        // ECUThrottleSource throttleSrc;   //!< Source of the throttle information
+        // uint16_t          throttlePulse; //!< Throttle pulse width in microseconds
+    }
+    else if (decodeECU_TelemetrySlow1PacketStructure(&frame, &telemetrySlow1))
+    {
+        internal_state.intake_manifold_temperature = C_TO_KELVIN(telemetrySlow1.mat);
+        internal_state.fuel_pressure = telemetrySlow1.fuelPressure;
+        
+        // Remaining data in packet:
+        // uint32_t        hobbs;        //!< Engine run time in seconds.
+        // float           voltage;      //!< Input voltage in Volts
+        // ECUGovernorMode governorMode; //!< Operational mode of the governor
+    }
+    else if (decodeECU_TelemetrySlow2PacketStructure(&frame, &telemetrySlow2))
+    {
+        internal_state.cylinder_status[0].ignition_timing_deg = telemetrySlow2.ignAngle1;
+        if (ENGINE_MAX_CYLINDERS > 1)
+        {
+            internal_state.cylinder_status[1].ignition_timing_deg = telemetrySlow2.ignAngle2;
+        }
+        
+        internal_state.fuel_consumption_rate_cm3pm = telemetrySlow2.flowRate / KGPM3_TO_GPCM3(get_ecu_dn());
+
+        // TODO: chargeTemp???
+        // float cpuLoad;      //!< CPU load in percent
+        // float chargeTemp;   //!< Charge temperature in Celsius
+        // float injectorDuty; //!< Injector duty cycle in percent
+    }
+    else if (decodeECU_ErrorsPacketStructure(&frame, &errors))
+    {
+        // TODO: Do any error bits nicely correspond to any warnings/errors in EFI_State
+    }
+    else
+    {
+        valid = false;
+    }
 
     if (valid)
     {
