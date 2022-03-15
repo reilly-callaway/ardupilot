@@ -41,4 +41,9 @@ float AP_EFI_Backend::get_coef2(void) const
 {
     return frontend.coef2;
 }
+
+float AP_EFI_Backend::get_ecu_dn(void) const
+{
+    return frontend.ecu_dn;
+}
 #endif // HAL_EFI_ENABLED
