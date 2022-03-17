@@ -570,9 +570,12 @@ class AutoTestPlane(AutoTest):
 
     def fly_deepstall_absolute(self):
         self.start_subtest("DeepStall Relative Absolute")
-        self.set_parameter("LAND_TYPE", 1)
         deepstall_elevator_pwm = 1661
-        self.set_parameter("LAND_DS_ELEV_PWM", deepstall_elevator_pwm)
+        self.set_parameters({
+            "LAND_TYPE": 1,
+            "LAND_DS_ELEV_PWM": deepstall_elevator_pwm,
+            "RTL_AUTOLAND": 1,
+        })
         self.load_mission("plane-deepstall-mission.txt")
         self.change_mode("AUTO")
         self.wait_ready_to_arm()
@@ -593,9 +596,12 @@ class AutoTestPlane(AutoTest):
 
     def fly_deepstall_relative(self):
         self.start_subtest("DeepStall Relative")
-        self.set_parameter("LAND_TYPE", 1)
         deepstall_elevator_pwm = 1661
-        self.set_parameter("LAND_DS_ELEV_PWM", deepstall_elevator_pwm)
+        self.set_parameters({
+            "LAND_TYPE": 1,
+            "LAND_DS_ELEV_PWM": deepstall_elevator_pwm,
+            "RTL_AUTOLAND": 1,
+        })
         self.load_mission("plane-deepstall-relative-mission.txt")
         self.change_mode("AUTO")
         self.wait_ready_to_arm()
@@ -766,6 +772,7 @@ class AutoTestPlane(AutoTest):
                 "RC%u_OPTION" % flaps_ch: 208, # Flaps RCx_OPTION
                 "LAND_FLAP_PERCNT": 50,
                 "LOG_DISARMED": 1,
+                "RTL_AUTOLAND": 1,
 
                 "RC%u_MIN" % flaps_ch: flaps_ch_min,
                 "RC%u_MAX" % flaps_ch: flaps_ch_max,
@@ -1038,7 +1045,7 @@ class AutoTestPlane(AutoTest):
             "SIM_RC_FAIL": 0,  # fix receiver
         })
         self.zero_throttle()
-        self.disarm_vehicle()
+        self.disarm_vehicle(force=True)
         self.context_pop()
         self.reboot_sitl()
 
@@ -1095,6 +1102,7 @@ class AutoTestPlane(AutoTest):
         self.context_push()
         ex = None
         try:
+            self.set_parameter("RTL_AUTOLAND", 1)
             self.load_mission("plane-gripper-mission.txt")
             self.set_current_waypoint(1)
             self.change_mode('AUTO')
@@ -1641,7 +1649,10 @@ class AutoTestPlane(AutoTest):
 
     def airspeed_autocal(self):
         self.progress("Ensure no AIRSPEED_AUTOCAL on ground")
-        self.set_parameter("ARSPD_AUTOCAL", 1)
+        self.set_parameters({
+            "ARSPD_AUTOCAL": 1,
+            "RTL_AUTOLAND": 1,
+        })
         m = self.mav.recv_match(type='AIRSPEED_AUTOCAL',
                                 blocking=True,
                                 timeout=5)
@@ -1739,6 +1750,7 @@ class AutoTestPlane(AutoTest):
         self.set_parameters({
             "FLIGHT_OPTIONS": 0,
             "ALT_HOLD_RTL": 8000,
+            "RTL_AUTOLAND": 1,
         })
         takeoff_alt = 10
         self.takeoff(alt=takeoff_alt)
@@ -1857,6 +1869,7 @@ class AutoTestPlane(AutoTest):
 
             '''ensure rangefinder gives height-above-ground'''
             self.load_mission("plane-gripper-mission.txt") # borrow this
+            self.set_parameter("RTL_AUTOLAND", 1)
             self.set_current_waypoint(1)
             self.change_mode('AUTO')
             self.wait_ready_to_arm()
@@ -2268,7 +2281,7 @@ function'''
         self.wait_waypoint(4, 4, timeout=1200, max_dist=120)
 
         # Disarm
-        self.disarm_vehicle()
+        self.disarm_vehicle_expect_fail()
 
         self.progress("Mission OK")
 
@@ -2365,7 +2378,7 @@ function'''
             raise NotAchievedException("Airspeed did not reduce with lower SOAR_VSPEED")
 
         # Disarm
-        self.disarm_vehicle()
+        self.disarm_vehicle_expect_fail()
 
         self.progress("Mission OK")
 
@@ -2872,7 +2885,7 @@ function'''
             self.context_clear_collection("STATUSTEXT")
             ###################################################################
 
-            self.disarm_vehicle()
+            self.disarm_vehicle(force=True)
 
         except Exception as e:
             self.print_exception_caught(e)
