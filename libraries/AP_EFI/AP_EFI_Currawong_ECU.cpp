@@ -47,25 +47,21 @@ bool AP_EFI_Currawong_ECU::handle_message(AP_HAL::CANFrame &frame)
     bool valid  = true;
 
     // There are differences between Ardupilot EFI_State and types/scaling of Piccolo packets.
-    // So we first decode to Piccolo structs, and then store the data we need in EFI_State internal_state with any scaling required.
+    // First decode to Piccolo structs, and then store the data we need in internal_state with any scaling required.
 
     // Structs to decode Piccolo messages into
     ECU_TelemetryFast_t telemetryFast;
     ECU_TelemetrySlow0_t telemetrySlow0;
     ECU_TelemetrySlow1_t telemetrySlow1;
     ECU_TelemetrySlow2_t telemetrySlow2;
-    ECU_Errors_t errors;
 
     // Throw the message at the decoding functions
     if (decodeECU_TelemetryFastPacketStructure(&frame, &telemetryFast))
     {
         internal_state.throttle_position_percent = static_cast<uint8_t>(telemetryFast.throttle);
-        // TODO: Do we have a better metric for engine load than just throttle?
         internal_state.engine_load_percent = static_cast<uint8_t>(telemetryFast.throttle);
         internal_state.engine_speed_rpm = static_cast<uint32_t>(telemetryFast.rpm);
 
-        // TODO: Is this appropriate derivation of engine state?
-        // Does the ECU provide a starting or fault state?
         if (internal_state.engine_speed_rpm > 0)
         {
             internal_state.engine_state = Engine_State::RUNNING;
@@ -78,35 +74,21 @@ bool AP_EFI_Currawong_ECU::handle_message(AP_HAL::CANFrame &frame)
         internal_state.estimated_consumed_fuel_volume_cm3 = static_cast<float>(telemetryFast.fuelUsed) / KGPM3_TO_GPCM3(get_ecu_dn());
 
         internal_state.general_error = telemetryFast.ecuStatusBits.errorIndicator;
-        // TODO: Is this needed? Or should we derive engine_state otherwise?
         if (!telemetryFast.ecuStatusBits.enabled)
         {
             internal_state.engine_state = Engine_State::STOPPED;
         }
-        
-        // Remaining data in packet:
-        // ECU_ecuStatusBits_t ecuStatusBits;
     }
     else if (decodeECU_TelemetrySlow0PacketStructure(&frame, &telemetrySlow0))
     {
         internal_state.intake_manifold_pressure_kpa = telemetrySlow0.map;
         internal_state.atmospheric_pressure_kpa = telemetrySlow0.baro;
         internal_state.cylinder_status[0].cylinder_head_temperature = C_TO_KELVIN(telemetrySlow0.cht);
-
-        // Remaining data in packet:
-        // uint16_t          rpmCmd;        //!< The reconstructed RPM command
-        // ECUThrottleSource throttleSrc;   //!< Source of the throttle information
-        // uint16_t          throttlePulse; //!< Throttle pulse width in microseconds
     }
     else if (decodeECU_TelemetrySlow1PacketStructure(&frame, &telemetrySlow1))
     {
         internal_state.intake_manifold_temperature = C_TO_KELVIN(telemetrySlow1.mat);
         internal_state.fuel_pressure = telemetrySlow1.fuelPressure;
-        
-        // Remaining data in packet:
-        // uint32_t        hobbs;        //!< Engine run time in seconds.
-        // float           voltage;      //!< Input voltage in Volts
-        // ECUGovernorMode governorMode; //!< Operational mode of the governor
     }
     else if (decodeECU_TelemetrySlow2PacketStructure(&frame, &telemetrySlow2))
     {
@@ -117,15 +99,6 @@ bool AP_EFI_Currawong_ECU::handle_message(AP_HAL::CANFrame &frame)
         }
         
         internal_state.fuel_consumption_rate_cm3pm = telemetrySlow2.flowRate / KGPM3_TO_GPCM3(get_ecu_dn());
-
-        // TODO: chargeTemp???
-        // float cpuLoad;      //!< CPU load in percent
-        // float chargeTemp;   //!< Charge temperature in Celsius
-        // float injectorDuty; //!< Injector duty cycle in percent
-    }
-    else if (decodeECU_ErrorsPacketStructure(&frame, &errors))
-    {
-        // TODO: Do any error bits nicely correspond to any warnings/errors in EFI_State
     }
     else
     {
