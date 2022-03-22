@@ -87,11 +87,11 @@ bool AP_EFI_Currawong_ECU::handle_message(AP_HAL::CANFrame &frame)
     {
         internal_state.intake_manifold_pressure_kpa = telemetrySlow0.map;
         internal_state.atmospheric_pressure_kpa = telemetrySlow0.baro;
-        internal_state.cylinder_status[0].cylinder_head_temperature = C_TO_KELVIN(telemetrySlow0.cht);
+        internal_state.cylinder_status[0].cylinder_head_temperature = telemetrySlow0.cht + C_TO_KELVIN;
     }
     else if (decodeECU_TelemetrySlow1PacketStructure(&frame, &telemetrySlow1))
     {
-        internal_state.intake_manifold_temperature = C_TO_KELVIN(telemetrySlow1.mat);
+        internal_state.intake_manifold_temperature = telemetrySlow1.mat + C_TO_KELVIN;
         internal_state.fuel_pressure = telemetrySlow1.fuelPressure;
     }
     else if (decodeECU_TelemetrySlow2PacketStructure(&frame, &telemetrySlow2))
