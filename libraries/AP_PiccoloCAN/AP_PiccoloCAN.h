@@ -47,6 +47,8 @@
 #define PICCOLO_MSG_RATE_HZ_MAX 500
 #define PICCOLO_MSG_RATE_HZ_DEFAULT 50
 
+#define PICCOLO_CAN_ECU_ID_DEFAULT 0
+
 class AP_PiccoloCAN : public AP_CANDriver, public AP_ESC_Telem_Backend
 {
 public:
@@ -134,6 +136,8 @@ private:
     bool handle_servo_message(AP_HAL::CANFrame &frame);
     
 #if HAL_EFI_CURRAWONG_ECU_ENABLED
+    void send_ecu_messages(void);
+
     // interpret an ECU message received over CAN
     bool handle_ecu_message(AP_HAL::CANFrame &frame);
 #endif
@@ -214,7 +218,8 @@ private:
     AP_Int32 _srv_bm;       //! Servo selection bitmask
     AP_Int16 _srv_hz;       //! Servo update rate (Hz)
 
-    AP_Int8 _ecu_en;        //! ECU Enable
+    AP_Int16 _ecu_id;        //! ECU Node ID
+    AP_Int16 _ecu_hz;       //! ECU update rate (Hz)
 
     HAL_Semaphore _telem_sem;
 };

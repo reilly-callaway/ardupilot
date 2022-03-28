@@ -35,6 +35,9 @@ AP_EFI_Currawong_ECU::AP_EFI_Currawong_ECU(AP_EFI &_frontend) :
 {
     singleton = this;
 
+    m_throttle = 0;
+    m_newThrottleCmd = false;
+
     // Indicate that temperature and fuel pressure are supported
     internal_state.fuel_pressure_status = Fuel_Pressure_Status::OK;
     internal_state.temperature_status = Temperature_Status::OK;
@@ -115,6 +118,16 @@ bool AP_EFI_Currawong_ECU::handle_message(AP_HAL::CANFrame &frame)
     }
 
     return valid;
+}
+
+void AP_EFI_Currawong_ECU::updateThrottleCommand(SRV_Channel::Aux_servo_function_t source)
+{
+    float output = SRV_Channels::get_output_scaled(source);
+    if (output != m_throttle)
+    {
+        m_throttle = output;
+        m_newThrottleCmd = true;
+    }
 }
 
 #endif // HAL_EFI_CURRAWONG_ECU_ENABLED

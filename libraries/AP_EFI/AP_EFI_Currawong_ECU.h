@@ -30,21 +30,34 @@
 
 #if HAL_EFI_CURRAWONG_ECU_ENABLED
 
+#include <SRV_Channel/SRV_Channel.h>
+
 class AP_EFI_Currawong_ECU : public AP_EFI_Backend {
 public:
     AP_EFI_Currawong_ECU(AP_EFI &_frontend);
     
     void update() override;
 
+    float getThrottle(void) { return m_throttle; }
+    bool isNewThrottleCmd(void) { return m_newThrottleCmd; }
+
     static AP_EFI_Currawong_ECU* get_instance(void)
     {
+        if (singleton == nullptr)
+        {
+            singleton = new AP_EFI_Currawong_ECU(*(AP_EFI().get_singleton()));
+        }
         return singleton;
     }
 
 private:
     bool handle_message(AP_HAL::CANFrame &frame);
+    void updateThrottleCommand(SRV_Channel::Aux_servo_function_t source = SRV_Channel::k_throttle);
 
     static AP_EFI_Currawong_ECU *singleton;
+
+    float m_throttle;
+    bool m_newThrottleCmd;
 
     friend class AP_PiccoloCAN;
 };
