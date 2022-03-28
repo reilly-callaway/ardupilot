@@ -31,7 +31,7 @@
 #include <AP_EFI/AP_EFI_Currawong_ECU.h>
 
 // maximum number of ESC allowed on CAN bus simultaneously
-#define PICCOLO_CAN_MAX_NUM_ESC 16
+#define PICCOLO_CAN_MAX_NUM_ESC 12
 #define PICCOLO_CAN_MAX_GROUP_ESC (PICCOLO_CAN_MAX_NUM_ESC / 4)
 
 #define PICCOLO_CAN_MAX_NUM_SERVO 16
