@@ -50,6 +50,8 @@ public:
     uint16_t rpm() { return status.statusA.rpm; }
     float temperature() { return MAX(status.statusB.escTemperature, status.statusC.fetTemperature); }
     float motorTemperature() { return status.statusB.motorTemperature; }
+    float inputPercent() { return (status.statusA.command - 1000) * 0.1f; } // Convert PWM (1000-2000) to % (0-100)
+    float dutyCycle() { return status.statusB.dutyCycle * 0.1f; }           // Convert to % (0 - 100)
 
     int16_t command;    //! Raw command to send to each ESC
     bool newCommand;    //! Is the command "new"?

@@ -40,8 +40,17 @@ bool AP_PiccoloCAN_ESC::handle_can_frame(AP_HAL::CANFrame &frame)
     uint8_t extended;
 
     if (decodeESC_StatusAPacketStructure(&frame, &status.statusA)) {
-        newTelemetry = true;
+#if AP_EXTENDED_ESC_TELEM_ENABLED
+        AP_ESC_Telem_Backend::TelemetryData telem {};
+
+        if ((status.statusA.mode & 0xf) == ESC_MODE_PWM)
+        {
+            telem.input_duty = uint8_t(inputPercent() + 0.5f);      // Round instead of truncate
+            update_telem_data(addr, telem, AP_ESC_Telem_Backend::TelemetryType::INPUT_DUTY);
+        }
+#endif // AP_EXTENDED_ESC_TELEM_ENABLED
         update_rpm(addr, rpm());
+        newTelemetry = true;
     } else if (decodeESC_StatusBPacketStructure(&frame, &status.statusB)) {
         AP_ESC_Telem_Backend::TelemetryData telem {};
 
@@ -49,12 +58,19 @@ bool AP_PiccoloCAN_ESC::handle_can_frame(AP_HAL::CANFrame &frame)
         telem.current = current() * 10;
         telem.motor_temp_cdeg = int16_t(motorTemperature() * 100);
         telem.temperature_cdeg = int16_t(temperature() * 100);
+#if AP_EXTENDED_ESC_TELEM_ENABLED
+        telem.output_duty = uint8_t(dutyCycle() + 0.5f);            // Round instead of truncate
+#endif // AP_EXTENDED_ESC_TELEM_ENABLED
 
         update_telem_data(addr, telem,
-            AP_ESC_Telem_Backend::TelemetryType::CURRENT |
-            AP_ESC_Telem_Backend::TelemetryType::VOLTAGE |
-            AP_ESC_Telem_Backend::TelemetryType::TEMPERATURE |
-            AP_ESC_Telem_Backend::TelemetryType::MOTOR_TEMPERATURE);
+            AP_ESC_Telem_Backend::TelemetryType::CURRENT
+            | AP_ESC_Telem_Backend::TelemetryType::VOLTAGE
+            | AP_ESC_Telem_Backend::TelemetryType::TEMPERATURE
+            | AP_ESC_Telem_Backend::TelemetryType::MOTOR_TEMPERATURE
+#if AP_EXTENDED_ESC_TELEM_ENABLED
+            | AP_ESC_Telem_Backend::TelemetryType::OUTPUT_DUTY
+#endif // AP_EXTENDED_ESC_TELEM_ENABLED
+            );
 
         newTelemetry = true;
     } else if (decodeESC_StatusCPacketStructure(&frame, &status.statusC)) {
@@ -64,6 +80,22 @@ bool AP_PiccoloCAN_ESC::handle_can_frame(AP_HAL::CANFrame &frame)
         update_telem_data(addr, telem, AP_ESC_Telem_Backend::TelemetryType::TEMPERATURE);
         newTelemetry = true;
     } else if (decodeESC_WarningErrorStatusPacket(&frame, &status.warnings, &status.errors, &extended, &status.warnings, &status.errors)) {
+#if AP_EXTENDED_ESC_TELEM_ENABLED
+        AP_ESC_Telem_Backend::TelemetryData telem {};
+        uint32_t flags = 0;
+        int byte_index = 0;
+// Ensure protocol hasn't expanded such that the warnings bits don't fit in a uint32_t
+#if (getMaxLengthOfESC_WarningBits_t() + getMaxLengthOfESC_ExtendedWarningBits_t() > 4)
+#error Size of PiccoloCAN warning bits exceeded TelemetryData flags size
+#endif
+        // Use protogen encoding to store bools into "flags" bitfield
+        encodeESC_WarningBits_t((uint8_t*)&flags, &byte_index, &status.warnings);
+        encodeESC_ExtendedWarningBits_t((uint8_t*)&flags, &byte_index, &status.warnings);
+
+        telem.flags = flags;
+        update_telem_data(addr, telem, AP_ESC_Telem_Backend::TelemetryType::FLAGS);
+#endif // AP_EXTENDED_ESC_TELEM_ENABLED
+        
         newTelemetry = true;
     } else if (decodeESC_FirmwarePacketStructure(&frame, &settings.firmware)) {
     } else if (decodeESC_AddressPacketStructure(&frame, &settings.address)) {
